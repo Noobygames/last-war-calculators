@@ -99,35 +99,50 @@ function assignHeroToSlot(hero, slotId) {
  * BERECHNUNG
  */
 function calculateDR() {
-    const base = parseFloat(db.global) || 0;
+const base = parseFloat(db.global) || 0;
     let frontTotal = base;
     let backTotal = base;
 
     const slots = db.squads[currentSquad].slots;
-    
+
+    // Durchlaufe alle belegten Slots
     Object.keys(slots).forEach(slotKey => {
         const slotData = slots[slotKey];
         const hero = HERO_DATA.find(h => h.id === slotData.id);
         if (!hero) return;
 
-        // DR von beiden relevanten Skills berechnen
+        // Gehe die Skill-Typen durch
         ['tactics', 'passive'].forEach(type => {
             const skillConf = hero.skills[type];
-            if (skillConf && skillConf.hasDR) {
-                const lvl = slotData.skills[type];
+            
+            // WICHTIG: Prüfen ob Skill existiert und DR-Werte hat
+            if (skillConf && skillConf.hasDR && typeof skillConf.base !== 'undefined') {
+                const lvl = slotData.skills[type] || 1; 
                 const val = skillConf.base + (lvl * skillConf.inc);
                 
-                if (skillConf.target === 'team') { frontTotal += val; backTotal += val; }
-                else if (skillConf.target === 'front') { frontTotal += val; }
-                else if (skillConf.target === 'self') {
-                    (slotKey < 2) ? frontTotal += (val / 2) : backTotal += (val / 3);
+                if (skillConf.target === 'team') { 
+                    frontTotal += val; 
+                    backTotal += val; 
+                } else if (skillConf.target === 'front') { 
+                    frontTotal += val; 
+                } else if (skillConf.target === 'self') {
+                    // Slot 0,1 = Front | Slot 2,3,4 = Back
+                    (parseInt(slotKey) < 2) ? frontTotal += (val / 2) : backTotal += (val / 3);
                 }
             }
         });
-    });
+    }); 
 
-    document.getElementById('display-front-dr').innerText = frontTotal.toFixed(2) + "%";
-    document.getElementById('display-back-dr').innerText = backTotal.toFixed(2) + "%";
+   // UI Update
+    const fDisplay = document.getElementById('display-front-dr');
+    const bDisplay = document.getElementById('display-back-dr');
+
+    if (fDisplay) fDisplay.innerText = frontTotal.toFixed(2) + "%";
+    if (bDisplay) bDisplay.innerText = backTotal.toFixed(2) + "%";
+    
+    // Optisches Feedback bei Cap-Erreichung (75%)
+    if(fDisplay) fDisplay.classList.toggle('text-red-500', frontTotal >= 75);
+    if(bDisplay) bDisplay.classList.toggle('text-red-500', backTotal >= 75);
 }
 
 /**
@@ -241,6 +256,93 @@ function showToast() {
 
 function clearFormation() {
     if (confirm("Clear this squad?")) { db.squads[currentSquad].slots = {}; saveAndRefresh(); }
+}
+
+
+/**
+ * CSV PROZESSOR
+ * Erwartet Spalten: id;name;cat;skill_name;skill_type;base;inc;target
+ * Beispiel: murphy;Murphy;Tank;Iron Shield;tactics;14;0.1;front
+ */
+function processCSV() {
+    const input = document.getElementById('csv-input').value.trim();
+    if (!input) return alert("Please paste CSV data first!");
+
+    const lines = input.split('\n');
+    let updateCount = 0;
+
+    lines.forEach(line => {
+        // Trennung per Semikolon oder Tab (für Copy-Paste aus Sheets)
+        const cols = line.includes('\t') ? line.split('\t') : line.split(';');
+        
+        if (cols.length >= 8) {
+            const [id, name, cat, sName, sType, sBase, sInc, sTarget] = cols.map(c => c.trim());
+            
+            // Helden in der Datenbank finden oder neu anlegen
+            let hero = HERO_DATA.find(h => h.id === id);
+            
+            if (!hero) {
+                hero = {
+                    id: id,
+                    name: name,
+                    cat: cat,
+                    skills: {
+                        auto: { name: "Standard", hasDR: false },
+                        tactics: { name: "Tactics", hasDR: false },
+                        passive: { name: "Passive", hasDR: false }
+                    }
+                };
+                HERO_DATA.push(hero);
+            }
+
+            // Skill-Werte aktualisieren (sType ist 'tactics' oder 'passive')
+            if (hero.skills[sType]) {
+                hero.skills[sType] = {
+                    name: sName,
+                    hasDR: true,
+                    base: parseFloat(sBase.replace(',', '.')),
+                    inc: parseFloat(sInc.replace(',', '.')),
+                    target: sTarget
+                };
+                updateCount++;
+            }
+        }
+    });
+
+    // Nach dem Import: UI aktualisieren und im LocalStorage als "Custom Data" speichern
+    HERO_DATA.sort((a, b) => a.name.localeCompare(b.name));
+    localStorage.setItem('dr_analyst_custom_heroes', JSON.stringify(HERO_DATA));
+    
+    renderHeroStorage();
+    calculateDR();
+    alert(`Import finished! Updated ${updateCount} skills.`);
+}
+
+// Damit die importierten Daten beim Laden nicht verloren gehen, 
+// muss die init() Funktion angepasst werden:
+async function init() {
+    // 1. Zuerst schauen, ob wir eigene Daten im LocalStorage haben
+    const customHeroes = localStorage.getItem('dr_analyst_custom_heroes');
+    
+    if (customHeroes) {
+        HERO_DATA = JSON.parse(customHeroes);
+    } else {
+        // Sonst Standard-JSON laden
+        const response = await fetch('heroes.json');
+        HERO_DATA = await response.json();
+    }
+    
+    // ... restliche Init-Logik (db laden, switchSquad etc.)
+}
+
+function downloadCurrentJSON() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(HERO_DATA, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "heroes_updated.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
 }
 
 window.onload = init;

@@ -104,6 +104,16 @@
                             <span id="display-back-dr" class="text-3xl font-mono font-black text-white">0.00%</span>
                         </div>
                     </div>
+                    <div id="csv-import-area" class="mt-8 bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Sheet Data Import (CSV)</h3>
+                        <textarea id="csv-input" placeholder="Paste CSV data from Google Sheet here... (ID, Name, Category, SkillName, SkillType, Base, Inc, Target)" 
+                                class="w-full h-24 bg-gray-950 border border-gray-800 rounded-lg p-3 text-[10px] font-mono text-blue-300 outline-none focus:border-blue-500 transition-all"></textarea>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="processCSV()" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all uppercase">Update Hero Database</button>
+                            <button onclick="downloadCurrentJSON()" class="border border-gray-700 text-gray-500 hover:text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all uppercase">Download current JSON</button>
+                        </div>
+                        <p class="text-[8px] text-gray-600 mt-2 italic">Format: id;name;cat;skill_name;skill_type;base;inc;target</p>
+                    </div>
                 </div>
             </section>
         </main>

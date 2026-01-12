@@ -391,9 +391,12 @@ function refreshSquadGrid() {
                                         <span class="text-[10px] text-gray-100 font-bold truncate w-24">${s.name || "Skill"}</span>
                                         <span class="text-[9px] text-gray-300 uppercase">${type}</span>
                                     </div>
-                                    <input type="number" value="${currentSkillLvl}" min="1" max="${maxSkill}" 
-                                           oninput="updateSkillLvl(${i}, '${type}', this.value)" 
-                                           class="input-field-small !w-10 !h-6 !text-xs !text-blue-400">
+                             
+                                 
+                                         <input type="number" value="${data.ex_lvl || 0}" min="0" max="30" 
+                                            oninput="updateSkillLvl(${i}, this.value)" 
+                                            class="input-field-small">
+                                  
                                 </div>
                             `;
                           })

@@ -66,6 +66,23 @@ input:focus {
   box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
 }
 
+/* Versteckt die Standard-Pfeile in Chrome/Safari/Edge/Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Versteckt die Pfeile in Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Fokus-Effekt für die gesamte Skill-Reihe */
+.group\/input:focus-within {
+    filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5));
+}
+
 #hero-storage::-webkit-scrollbar {
   width: 6px;
 }
@@ -151,6 +168,20 @@ input:focus {
   overflow: hidden;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.2);
+  backface-visibility: hidden;
+  transform: translateZ(0); /* Hardware-Beschleunigung erzwingen */
+}
+
+/* Verhindert, dass der Input die Zeilenhöhe beim Tippen verändert */
+input[type="number"] {
+    line-height: normal;
+    display: block;
+    margin: 0;
+    vertical-align: middle;
+}
+
+:focus-visible {
+    outline: none;
 }
 
 /* Der Meta-Glow Zustand */

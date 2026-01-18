@@ -444,20 +444,23 @@ function calculateDR() {
       // const inc = heroBase.skills.passive.inc || 0;
     }
 
-    // Klassen-Management (wir überschreiben className komplett oder nutzen classList)
-    // Hier sicherstellen, dass wir die Tailwind-Basisklassen behalten
-    const baseClasses = "text-2xl font-black italic leading-none drop-shadow-md transition-colors duration-300";
     const baseStats = db.globalBaseStats;
     let totalPhysicalReduction =
       baseStats.drone_lvl.calculatedPhysicalReduction + baseStats.sf_tech_1.calculatedPhysicalReduction + baseStats.sf_tech_2.calculatedPhysicalReduction;
 
     physicalDRElement.innerText = totalPhysicalReduction.toFixed(1) + "%";
     if (totalPhysicalReduction >= 85) {
-      physicalDRElement.className = `${baseClasses} text-red-500`;
+      physicalDRElement.classList.add(`text-red-500`);
+      physicalDRElement.classList.remove(`text-yellow-400`);
+      physicalDRElement.classList.remove(`text-blue-500`);
     } else if (totalPhysicalReduction >= 70) {
-      physicalDRElement.className = `${baseClasses} text-yellow-400`;
+      physicalDRElement.classList.remove(`text-red-500`);
+      physicalDRElement.classList.add(`text-yellow-400`);
+      physicalDRElement.classList.remove(`text-blue-500`);
     } else {
-      physicalDRElement.className = `${baseClasses} text-blue-500`;
+       physicalDRElement.classList.remove(`text-red-500`);
+      physicalDRElement.classList.remove(`text-yellow-400`);
+      physicalDRElement.classList.add(`text-blue-500`);
     }
 
     let totalEnergyDamageReduction =

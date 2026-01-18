@@ -1,13 +1,14 @@
-import type { GlobalBaseStats } from '../types';
+import { useSquad } from '../context/SquadContext'; 
 
 interface BaseStatsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  globalStats: GlobalBaseStats;
-  updateGlobalStat: (key: keyof GlobalBaseStats, value: string) => void;
 }
 
-export default function BaseStatsModal({ isOpen, onClose, globalStats, updateGlobalStat }: BaseStatsModalProps) {
+export default function BaseStatsModal({ isOpen, onClose }: BaseStatsModalProps) {
+  const { db, updateGlobalStat } = useSquad();
+  const globalStats = db.globalBaseStats;
+
   if (!isOpen) return null;
 
   return (

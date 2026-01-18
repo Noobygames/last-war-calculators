@@ -1,10 +1,13 @@
+import { useSquad } from '../context/SquadContext';
+
 interface HeaderProps {
-  currentSquadIdx: number;
-  switchSquad: (idx: number) => void;
   onOpenSettings: () => void;
 }
 
-export default function Header({ currentSquadIdx, switchSquad, onOpenSettings }: HeaderProps) {
+export default function Header({ onOpenSettings }: HeaderProps) {
+  const { db, switchSquad } = useSquad();
+  const { currentSquadIdx } = db;
+
   return (
     <header className="h-16 flex-shrink-0 bg-gray-900/50 border-b border-gray-800 flex items-center px-6 justify-between z-50">
       <div className="flex items-center gap-3">

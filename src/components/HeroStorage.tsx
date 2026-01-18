@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import HERO_DATA_RAW from '../data/heroes.json';
 import type { HeroBase } from '../types';
+import { useSquad } from '../context/SquadContext';
 
 const HERO_DATA = HERO_DATA_RAW as HeroBase[];
 
-interface HeroStorageProps {
-  showNerzi: boolean;
-}
-
-export default function HeroStorage({ showNerzi }: HeroStorageProps) {
+export default function HeroStorage() {
+  const { metaStatus } = useSquad();
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 
@@ -16,7 +14,7 @@ export default function HeroStorage({ showNerzi }: HeroStorageProps) {
     const matchesType = filter === "All" || hero.cat === filter;
     const matchesSearch = hero.name.toLowerCase().includes(search.toLowerCase());
     const isNerzi = hero.name === "Nerzi";
-    if (isNerzi && !showNerzi) return false;
+    if (isNerzi && !metaStatus.showNerzi) return false;
     return matchesType && matchesSearch;
   });
 

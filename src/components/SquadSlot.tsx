@@ -1,29 +1,61 @@
 import React from 'react';
-import type { SlotData, DRStats } from '../types';
+import { useSquad } from '../context/SquadContext';
 
 interface SquadSlotProps {
   slotIdx: number;
-  hero: SlotData;
-  drStats: DRStats;
-  onDrop: (heroId: string, slotIdx: number) => void;
-  onRemove: (slotIdx: number) => void;
-  onUpdateEx: (slotIdx: number, val: string) => void;
-  onUpdateSkill: (slotIdx: number, type: 'tactics_lvl' | 'passive_lvl', val: string) => void;
-  isMeta: boolean;
-  onClick?: () => void;
 }
 
+// Interne Sub-Komponente für die Stats-Inputs
+// Reduziert Codeduplizierung und verbessert die Lesbarkeit
+const StatInput = ({ 
+  label, 
+  value, 
+  onChange, 
+  color 
+}: { 
+  label: string; 
+  value: number; 
+  onChange: (val: string) => void; 
+  color: 'blue' | 'purple' | 'yellow';
+}) => {
+  const colors = {
+    blue: { dot: 'bg-blue-500', text: 'text-blue-300', border: 'focus:border-blue-500' },
+    purple: { dot: 'bg-purple-500', text: 'text-purple-300', border: 'focus:border-purple-500' },
+    yellow: { dot: 'bg-yellow-500', text: 'text-yellow-300', border: 'focus:border-yellow-500' },
+  }[color];
+
+  return (
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className={`w-1 h-2.5 sm:h-3 ${colors.dot} rounded-full flex-shrink-0`}></div>
+      <label className="text-[8px] sm:text-[9px] font-bold text-gray-400 w-5 sm:w-6 uppercase">{label}</label>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`min-w-0 flex-1 bg-gray-900/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right ${colors.text} ${colors.border} outline-none transition-colors`}
+      />
+    </div>
+  );
+};
+
 export default function SquadSlot({ 
-  slotIdx, 
-  hero, 
-  drStats, 
-  onDrop, 
-  onRemove, 
-  onUpdateEx, 
-  onUpdateSkill,
-  isMeta,
-  onClick
+  slotIdx
 }: SquadSlotProps) {
+  const { 
+    currentSquad, 
+    assignHero, 
+    removeHero, 
+    updateHeroSlot, 
+    updateSkill, 
+    metaStatus, 
+    calculateDR, 
+    openSelectionModal 
+  } = useSquad();
+
+  const hero = currentSquad.slots[slotIdx];
+  const drStats = calculateDR(slotIdx);
+  const isMeta = !!metaStatus.metaType;
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.currentTarget.classList.add("drag-over");
@@ -35,15 +67,24 @@ export default function SquadSlot({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.currentTarget.classList.remove("drag-over");
     const heroId = e.dataTransfer.getData("heroId");
-    if (heroId) onDrop(heroId, slotIdx);
+    if (heroId) assignHero(heroId, slotIdx);
   };
 
   const getDRColor = (val: number) => {
     if (val >= 85) return "text-red-500";
     if (val >= 70) return "text-yellow-400";
     return "text-blue-500";
+  };
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (hero.id) {
+      e.dataTransfer.setData("heroId", hero.id);
+      e.dataTransfer.setData("fromSlotIdx", slotIdx.toString());
+      e.dataTransfer.effectAllowed = "move";
+    }
   };
 
   return (
@@ -55,7 +96,7 @@ export default function SquadSlot({
     >
       {!hero.id ? (
         <div 
-          onClick={onClick}
+          onClick={() => openSelectionModal(slotIdx)}
           className="absolute inset-0 z-0 flex flex-col items-center justify-center transition-opacity duration-300 cursor-pointer hover:bg-white/5"
         >
           <div className="text-5xl lg:text-6xl mb-2 opacity-20 grayscale group-hover:opacity-40 transition-opacity">🐢</div>
@@ -65,7 +106,7 @@ export default function SquadSlot({
           </div>
         </div>
       ) : (
-        <div className="relative z-10 w-full h-full flex flex-col">
+        <div className="relative z-10 w-full h-full flex flex-col cursor-pointer" onClick={() => openSelectionModal(slotIdx)} draggable={!!hero.id} onDragStart={handleDragStart}>
           <div className="absolute inset-0 z-0">
             <img
               src={`img/${hero.id}.png`}
@@ -86,7 +127,7 @@ export default function SquadSlot({
               />
             </div>
 
-            <div className="flex-1 flex flex-col justify-center min-w-0 px-1">
+            <div className="flex-1 flex flex-col justify-center min-w-0 pl-1 pr-8">
               <div className="flex justify-between items-center border-b border-white/5 pb-0.5 mb-0.5">
                 <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Phys</span>
                 <span className={`text-[10px] sm:text-sm md:text-[12px] lg:text-[16px] font-black italic leading-none ${getDRColor(drStats.phys)}`}>
@@ -103,10 +144,10 @@ export default function SquadSlot({
 
             <button onClick={(e) => {
               e.stopPropagation();
-              onRemove(slotIdx);
-            }} className="absolute top-2 right-2 text-white/10 hover:text-red-500 transition-colors p-2 z-20 cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              removeHero(slotIdx);
+            }} className="absolute top-2 right-2 bg-black/60 text-red-500 hover:bg-red-600 hover:text-white transition-all p-2 rounded-full z-20 cursor-pointer shadow-sm border border-white/10 backdrop-blur-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
@@ -116,37 +157,28 @@ export default function SquadSlot({
               {hero.name}
             </div>
 
-            <div className="grid grid-cols-1 gap-1 sm:gap-1.5 bg-black/40 rounded-lg sm:rounded-xl p-1.5 sm:p-2 border border-white/5">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-1 h-2.5 sm:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
-                <label className="text-[8px] sm:text-[9px] font-bold text-gray-400 w-5 sm:w-6 uppercase">EW</label>
-                <input
-                  type="number"
-                  value={hero.ex_lvl || 0}
-                  onChange={(e) => onUpdateEx(slotIdx, e.target.value)}
-                  className="min-w-0 flex-1 bg-gray-900/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right text-blue-300 focus:border-blue-500 outline-none transition-colors"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-1 h-2.5 sm:h-3 bg-purple-500 rounded-full flex-shrink-0"></div>
-                <label className="text-[8px] sm:text-[9px] font-bold text-gray-400 w-5 sm:w-6 uppercase">Pas</label>
-                <input
-                  type="number"
-                  value={hero.skills?.passive || 1}
-                  onChange={(e) => onUpdateSkill(slotIdx, 'passive_lvl', e.target.value)}
-                  className="min-w-0 flex-1 bg-gray-900/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right text-purple-300 focus:border-purple-500 outline-none transition-colors"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-1 h-2.5 sm:h-3 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                <label className="text-[8px] sm:text-[9px] font-bold text-gray-400 w-5 sm:w-6 uppercase">Tac</label>
-                <input
-                  type="number"
-                  value={hero.skills?.tactics || 1}
-                  onChange={(e) => onUpdateSkill(slotIdx, 'tactics_lvl', e.target.value)}
-                  className="min-w-0 flex-1 bg-gray-900/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right text-yellow-300 focus:border-yellow-500 outline-none transition-colors"
-                />
-              </div>
+            <div 
+              className="grid grid-cols-1 gap-1 sm:gap-1.5 bg-black/40 rounded-lg sm:rounded-xl p-1.5 sm:p-2 border border-white/5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <StatInput 
+                label="EW" 
+                value={hero.ex_lvl || 0} 
+                onChange={(val) => updateHeroSlot(slotIdx, { ex_lvl: parseInt(val, 10) || 0 })} 
+                color="blue" 
+              />
+              <StatInput 
+                label="Pas" 
+                value={hero.skills?.passive || 1} 
+                onChange={(val) => updateSkill(slotIdx, 'passive_lvl', val)} 
+                color="purple" 
+              />
+              <StatInput 
+                label="Tac" 
+                value={hero.skills?.tactics || 1} 
+                onChange={(val) => updateSkill(slotIdx, 'tactics_lvl', val)} 
+                color="yellow" 
+              />
             </div>
           </div>
         </div>

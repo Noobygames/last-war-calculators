@@ -1,11 +1,9 @@
-import type { GlobalBaseStats } from '../types';
+import { useSquad } from '../context/SquadContext';
 
-interface SidebarProps {
-  globalStats: GlobalBaseStats;
-  updateGlobalStat: (key: keyof GlobalBaseStats, value: string) => void;
-}
+export default function Sidebar() {
+  const { db, updateGlobalStat } = useSquad();
+  const globalStats = db.globalBaseStats;
 
-export default function Sidebar({ globalStats, updateGlobalStat }: SidebarProps) {
   return (
     <aside className="hidden xl:flex w-64 flex-shrink-0 bg-black/20 border-r border-gray-800 flex-col p-6 space-y-8 overflow-y-auto">
       <div className="space-y-4">

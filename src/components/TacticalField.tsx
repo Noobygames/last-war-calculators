@@ -1,28 +1,9 @@
 import { useEffect, useRef } from 'react';
 import SquadSlot from './SquadSlot';
-import type { Squad, DRStats, MetaStatus } from '../types';
+import { useSquad } from '../context/SquadContext'; 
 
-interface TacticalFieldProps {
-  squad: Squad;
-  onDrop: (heroId: string, slotIdx: number) => void;
-  onRemove: (slotIdx: number) => void;
-  onUpdateEx: (slotIdx: number, val: string) => void;
-  onUpdateSkill: (slotIdx: number, type: 'tactics_lvl' | 'passive_lvl', val: string) => void;
-  calculateDR: (slotIdx: number) => DRStats;
-  metaStatus: MetaStatus;
-  onSlotClick: (slotIdx: number) => void;
-}
-
-export default function TacticalField({ 
-  squad, 
-  onDrop, 
-  onRemove, 
-  onUpdateEx, 
-  onUpdateSkill, 
-  calculateDR,
-  metaStatus,
-  onSlotClick
-}: TacticalFieldProps) {
+export default function TacticalField() {
+  const { currentSquad } = useSquad();
   const fieldRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,14 +44,6 @@ export default function TacticalField({
     <div className={classNameOverride} key={idx}>
       <SquadSlot 
         slotIdx={idx}
-        hero={squad.slots[idx]}
-        drStats={calculateDR(idx)}
-        onDrop={onDrop}
-        onRemove={onRemove}
-        onUpdateEx={onUpdateEx}
-        onUpdateSkill={onUpdateSkill}
-        isMeta={!!metaStatus.metaType}
-        onClick={() => onSlotClick(idx)}
       />
     </div>
   );

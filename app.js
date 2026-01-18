@@ -393,7 +393,7 @@ function refreshSquadGrid() {
     const placeholder = document.getElementById(`empty-slot-placeholder-${idx}`);
     const content = document.getElementById(`hero-content-${idx}`);
     const isEmpty = !hero || !hero.id;
-    
+
     if (placeholder && content) {
       if (isEmpty) {
         placeholder.classList.remove("hidden");
@@ -415,7 +415,7 @@ function refreshSquadGrid() {
       }
     }
 
-    slot.className = "squad-slot relative overflow-hidden aspect-[3/4] rounded-[2rem] border-2 border-blue-500 bg-black shadow-2xl";
+    // slot.className = "squad-slot relative overflow-hidden aspect-[3/4] rounded-[2rem] border-2 border-blue-500 bg-black shadow-2xl";
 
     const pDR = 0;
     const eDR = 0;

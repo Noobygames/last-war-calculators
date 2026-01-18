@@ -1,50 +1,78 @@
-/**
- * DR ANALYST - PRO ENGINE (app.js)
- * Features: Exclusive Weapon scaling, 3-Skill Logic, Drag & Drop
- */
-
 let HERO_DATA = [];
 let currentSquad = 1;
 let currentFilter = "All";
 let searchQuery = "";
 window.currentHeroStats = {};
+let currentTargetSlot = null;
+
+const createEmptySlot = () => ({
+  id: null,
+  ex_lvl: 0,
+  stars: 0,
+  skills: {
+    tactics: 1,
+    passive: 1,
+  },
+});
 
 let db = {
   global: 0.0,
-  squads: {
-    1: { slots: {} },
-    2: { slots: {} },
-    3: { slots: {} },
-  },
+  specialForces: 0.0,
+  drone: 0.0,
+  currentSquadIdx: 0,
+  squads: [
+    { name: "Squad 1", slots: Array.from({ length: 5 }, createEmptySlot) },
+    { name: "Squad 2", slots: Array.from({ length: 5 }, createEmptySlot) },
+    { name: "Squad 3", slots: Array.from({ length: 5 }, createEmptySlot) },
+  ],
 };
 
 /**
  * INITIALISIERUNG
  */
 async function init() {
+  console.log("init started");
   try {
-    // 1. Helden laden
-    const customHeroes = localStorage.getItem("dr_analyst_custom_heroes");
-    if (customHeroes) {
-      HERO_DATA = JSON.parse(customHeroes);
+    await loadHeroData();
+    loadDatabase();
+
+    const desktopConfig = document.getElementById("desktop-config-container");
+    const mobileContainer = document.getElementById("mobile-config-container");
+
+    if (desktopConfig && mobileContainer) {
+      mobileContainer.innerHTML = desktopConfig.innerHTML;
+
+      const mobileInputs = mobileContainer.querySelectorAll("input");
+
+      mobileInputs.forEach((mInput) => {
+        const originalId = mInput.id;
+        mInput.id = "mobile-" + originalId;
+
+        mInput.addEventListener("input", (e) => {
+          const dInput = document.getElementById(originalId);
+          if (dInput) {
+            dInput.value = e.target.value;
+            saveAndRefresh();
+          }
+        });
+      });
+    }
+
+    if (window.innerWidth >= 1024) {
+      renderHeroStorage(false, false); // Nur Sidebar rendern
     } else {
-      const response = await fetch("heroes.json");
-      if (!response.ok) throw new Error("Heroes JSON nicht gefunden");
-      HERO_DATA = await response.json();
+      renderHeroStorage(false, true);
     }
 
-    // 2. Datenbank / Squads laden
-    const saved = localStorage.getItem("dr_analyst_v4_db");
-    if (saved) {
-      db = JSON.parse(saved);
-    }
+    refreshSquadGrid();
 
-    // 3. UI Initialisieren
-    // WICHTIG: Erst rendern, wenn HERO_DATA garantiert gefüllt ist!
-    renderHeroStorage(false);
-    switchSquad(1);
+    // Event-Listener für Fenstergrößen-Änderung
+    window.addEventListener("resize", fitTacticalField);
 
-    console.log("System bereit. Helden im Speicher:", HERO_DATA.length);
+    // Wichtig: Einmal aufrufen, wenn alles gerendert ist
+    setTimeout(fitTacticalField, 100);
+
+    console.log("Init complete");
   } catch (error) {
     console.error("Init fehlgeschlagen:", error);
     // Fallback: Falls alles crashed, leeres Array aber Code läuft weiter
@@ -52,64 +80,145 @@ async function init() {
   }
 }
 
-// Und am Ende der Datei der Startschuss:
-init();
+async function loadHeroData() {
+  try {
+    const response = await fetch("heroes.json");
+    if (!response.ok) throw new Error("JSON konnte nicht geladen werden");
+
+    HERO_DATA = await response.json();
+    console.log("Helden erfolgreich geladen:", HERO_DATA.length);
+
+    // Erst wenn die Daten da sind, rendern wir den Storage
+    renderHeroStorage();
+  } catch (error) {
+    console.error("Fehler beim Laden der Helden-JSON:", error);
+    // Fallback: Ein leerer Storage ist besser als ein Absturz
+    document.getElementById("hero-storage").innerHTML = "Fehler beim Laden der Helden.";
+  }
+}
+
+function loadDatabase() {
+  let data = {
+    global: 0.0,
+    currentSquadIdx: 0, // Wir speichern den aktiven Tab direkt mit
+    squads: [
+      { name: "Squad 1", slots: [null, null, null, null, null] },
+      { name: "Squad 2", slots: [null, null, null, null, null] },
+      { name: "Squad 3", slots: [null, null, null, null, null] },
+    ],
+  };
+
+  const saved = localStorage.getItem("dr_analyst_v4_db"); // Wichtig: dein Key v4
+  if (!saved) {
+    console.warn("No data found in local storage. Creating new db");
+  }
+
+  data = JSON.parse(saved);
+
+  if (data.squads && !Array.isArray(data.squads)) {
+    data.squads = Object.values(data.squads);
+  }
+
+  data.squads.forEach((squad) => {
+    if (squad.slots && !Array.isArray(squad.slots)) {
+      let newSlots = [null, null, null, null, null];
+      Object.keys(squad.slots).forEach((key) => {
+        const idx = parseInt(key);
+        if (idx >= 0 && idx < 5) {
+          newSlots[idx] = squad.slots[key];
+        }
+      });
+      squad.slots = newSlots;
+    }
+  });
+
+  db = data;
+}
+
+function openHeroModal(slotIdx) {
+  currentTargetSlot = slotIdx; // Speicher den Slot-Index
+  document.getElementById("hero-modal").classList.remove("hidden");
+  renderHeroStorage(window.lastNerziState, true); // Render ins Modal!
+}
+
+function selectHeroFromModal(heroId) {
+  if (currentTargetSlot !== null) {
+    const success = assignHeroToSlot(heroId, currentTargetSlot);
+
+    if (success) {
+      closeHeroModal();
+    }
+  }
+}
+
+function closeHeroModal() {
+  document.getElementById("hero-modal").classList.add("hidden");
+  currentTargetSlot = null;
+}
+
 /**
  * RENDERER: LINKES LAGER
  */
 // Wir setzen forceNerzi = false als Standardwert (Default Parameter)
-function renderHeroStorage(forceNerzi = false) {
-  const container = document.getElementById("hero-storage");
+// Wir fügen isModal als Parameter hinzu (Default ist false)
+function renderHeroStorage(forceNerzi = false, isModal = false) {
+  const container = isModal ? document.getElementById("modal-hero-list") : document.getElementById("hero-storage");
   if (!container) return;
 
   container.innerHTML = "";
 
-  const filtered = HERO_DATA.filter((hero) => {
-    const matchesType = currentFilter === "All" || hero.cat === currentFilter;
-    const matchesSearch = hero.name.toLowerCase().includes(searchQuery);
-    const isNerzi = hero.name === "Nerzi";
+  const activeFilter = isModal ? (typeof modalFilter !== "undefined" ? modalFilter : "All") : typeof currentFilter !== "undefined" ? currentFilter : "All";
+  const activeSearch = isModal ? (typeof modalSearchQuery !== "undefined" ? modalSearchQuery : "") : typeof searchQuery !== "undefined" ? searchQuery : "";
 
-    // Nerzi Logik: Nur zeigen wenn forceNerzi true UND er zum Filter/Search passt
+  const filtered = HERO_DATA.filter((hero) => {
+    const matchesType = activeFilter === "All" || hero.cat === activeFilter;
+    const matchesSearch = (hero.name || "").toLowerCase().includes(activeSearch.toLowerCase());
+
+    const isNerzi = hero.name === "Nerzi";
     if (isNerzi && !forceNerzi) return false;
 
     return matchesType && matchesSearch;
   });
 
   filtered.forEach((hero) => {
-    // EASTER EGG LOGIK
-    // Wenn der Held "Nerzi" heißt, wird er übersprungen,
-    // AUSSER forceNerzi ist true.
-    if (hero.name === "Nerzi" && !forceNerzi) {
-      return;
+    const card = document.createElement("div");
+
+    card.className = isModal ? "cursor-pointer transform active:scale-95 transition-transform" : "hero-storage-card group";
+
+    if (!isModal) {
+      card.draggable = true;
+      card.ondragstart = (e) => handleDragStart(e, hero.id);
+    } else {
+      card.onclick = () => {
+        selectHeroFromModal(hero.id);
+      };
     }
 
-    const card = document.createElement("div");
-    card.className = "hero-storage-card group"; // Stelle sicher, dass die CSS Klasse existiert
-    card.draggable = true;
-    card.ondragstart = (e) => handleDragStart(e, hero.id);
-
     card.innerHTML = `
-            <div class="relative overflow-hidden rounded-lg border border-gray-800 bg-gray-950 p-2 hover:border-blue-500 transition-all">
-                <img src="img/${hero.id}.png" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHRleHQgeT0iMjAiIGZvbnQtc2l6ZT0iMjAiPu88fDwvdGV4dD48L3N2Zz4='" 
-                     class="w-full h-16 object-cover rounded mb-2 opacity-80 group-hover:opacity-100">
-                <div class="text-[9px] font-black text-white uppercase truncate">${hero.name}</div>
-                <div class="text-[7px] text-gray-500 uppercase">${hero.cat}</div>
+        <div class="relative overflow-hidden rounded-lg border border-gray-800 bg-gray-950 p-2 hover:border-blue-500 transition-all cursor-grab active:cursor-grabbing">
+            <div class="w-full h-16 flex items-center justify-center mb-1">
+                <img src="img/${hero.id}.png" 
+                     onerror="this.src='https://emojicdn.elk.sh/🐢'; this.style.opacity='0.5'" 
+                     class="max-w-full max-h-full object-contain rounded opacity-80 group-hover:opacity-100 transition-opacity">
             </div>
-        `;
+            <div class="text-[9px] font-black text-white uppercase truncate text-center">${hero.name}</div>
+            <div class="text-[7px] text-gray-500 uppercase text-center">${hero.cat}</div>
+            ${isModal ? '<div class="mt-2 text-[8px] bg-blue-600 text-center rounded py-1 font-bold text-white">SELECT</div>' : ""}
+        </div>
+    `;
     container.appendChild(card);
   });
 
-  // Counter aktualisieren
-  const countEl = document.getElementById("hero-count");
-  if (countEl) countEl.innerText = container.children.length;
+  if (!isModal) {
+    const countEl = document.getElementById("hero-count");
+    if (countEl) countEl.innerText = filtered.length;
+  }
 }
 
 function handleDragStart(e, heroId) {
-  // Wir speichern die ID des Helden im "Datentransport" des Browsers
-  e.dataTransfer.setData("text/plain", heroId);
-  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("heroId", heroId);
+  e.dataTransfer.effectAllowed = "copy";
 
-  // Optional: Ein kleiner visueller Effekt für die Karte, die man gerade zieht
   e.target.style.opacity = "0.5";
 }
 
@@ -117,72 +226,62 @@ function handleDragOver(e) {
   // WICHTIG: Verhindert das Standardverhalten, damit "Drop" erlaubt wird
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
+  e.currentTarget.classList.add("drag-over");
 }
 
-function handleDrop(e, slotIdx) {
-  e.preventDefault();
-  const heroId = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text");
-  if (!heroId) return;
+function assignHeroToSlot(heroId, slotIdx) {
+  const heroBase = HERO_DATA.find((h) => h.id === heroId);
+  if (!heroBase) return;
 
-  const hero = HERO_DATA.find((h) => h.id === heroId);
-  if (!hero) return;
+  const currentIdx = db.currentSquadIdx;
+  let savedStats = null;
 
-  // Check ob Held schon in anderem Squad
-  let existingSquad = null;
-  for (let sId in db.squads) {
-    const slots = Array.isArray(db.squads[sId].slots) ? db.squads[sId].slots : Object.values(db.squads[sId].slots);
-    if (slots.some((s) => s && s.id === heroId) && parseInt(sId) !== currentSquad) {
-      existingSquad = sId;
-      break;
+  const currentSlotHero = db.squads[currentIdx].slots[slotIdx];
+  if (currentSlotHero && currentSlotHero.id === heroId) {
+    savedStats = currentSlotHero;
+    console.log("Held existiert hier schon - Werte werden behalten.");
+  } else {
+    for (const squad of db.squads) {
+      const found = squad.slots.find((s) => s.id === heroId);
+      if (found) {
+        savedStats = found;
+        console.log("Bekannten Helden gefunden - Werte werden übernommen.");
+        break;
+      }
     }
   }
 
-  if (existingSquad) {
-    showToast(`Hero already in Squad ${existingSquad}!`, "error");
-    return;
-  }
+  const newValues = savedStats
+    ? {
+        ex_lvl: savedStats.ex_lvl,
+        stars: savedStats.stars || 0,
+        skills: { ...savedStats.skills },
+      }
+    : {
+        ex_lvl: 0,
+        stars: 0,
+        skills: { tactics: 1, passive: 1 },
+      };
 
-  // Struktur sicherstellen
-  if (!db.squads[currentSquad].slots) db.squads[currentSquad].slots = {};
-
-  db.squads[currentSquad].slots[slotIdx] = {
-    id: hero.id,
-    ex_lvl: 0,
-    skills: { tactics: 1, passive: 1 },
+  db.squads[currentIdx].slots[slotIdx] = {
+    id: heroBase.id,
+    name: heroBase.name,
+    cat: heroBase.cat,
+    ...newValues,
   };
 
   saveAndRefresh();
 }
 
-// function handleDrop(e, slotIdx) {
-//   e.preventDefault();
-//   const heroId = e.dataTransfer.getData("text/plain");
-//   const hero = HERO_DATA.find((h) => h.id === heroId);
+function handleDrop(e, slotIdx) {
+  e.preventDefault();
+  const heroId = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text");
 
-//   if (hero) {
-//     // Wir wandeln ALLES in Arrays um, um sicher zu gehen
-//     const allSquads = Object.values(db.squads);
+  // Einfach die zentrale Funktion rufen
+  assignHeroToSlot(heroId, slotIdx);
 
-//     const isUsed = allSquads.some((squad) => {
-//       // Falls slots ein Objekt ist, machen wir ein Array daraus
-//       const slotList = Array.isArray(squad.slots) ? squad.slots : Object.values(squad.slots);
-//       return slotList.some((slot) => slot && slot.id === heroId);
-//     });
-
-//     if (isUsed) {
-//       showToast(); // Die rote Nachricht
-//       return;
-//     }
-
-//     // Setzen des Helden (stellt sicher, dass das Ziel existiert)
-//     if (!db.squads[currentSquad].slots) {
-//       db.squads[currentSquad].slots = [null, null, null, null, null];
-//     }
-
-//     db.squads[currentSquad].slots[slotIdx] = hero;
-//     saveAndRefresh();
-//   }
-// }
+  e.currentTarget.classList.remove("drag-over");
+}
 
 // Damit die Karte nach dem Loslassen wieder normal aussieht
 document.addEventListener("dragend", (e) => {
@@ -191,33 +290,11 @@ document.addEventListener("dragend", (e) => {
   }
 });
 
-/**
- * STATUS-UPDATE: Wird aufgerufen, wenn Helden bewegt werden
- */
-function updateHeroStatus() {
-  HERO_DATA.forEach((hero) => {
-    const card = document.getElementById(`card-${hero.id}`);
-    if (!card) return;
-
-    const isUsed = isHeroUsedAnywhere(hero.id);
-
-    if (isUsed) {
-      card.classList.add("in-squad");
-      card.setAttribute("draggable", "false");
-    } else {
-      card.classList.remove("in-squad");
-      card.setAttribute("draggable", "true");
-    }
-  });
-}
-
-/**
- * DRAG & DROP
- */
 function handleDragOver(ev) {
   ev.preventDefault();
   ev.currentTarget.classList.add("drag-over");
 }
+
 function handleDragLeave(ev) {
   ev.currentTarget.classList.remove("drag-over");
 }
@@ -226,195 +303,126 @@ function handleDragLeave(ev) {
  * BERECHNUNG
  */
 function calculateDR() {
-  const sf = parseFloat(document.getElementById("base-sf").value) || 0;
-  const drone = parseFloat(document.getElementById("base-drone").value) || 0;
-  const extra = parseFloat(document.getElementById("base-extra").value) || 0;
+  const baseSF = parseFloat(document.getElementById("base-sf")?.value) || 0;
+  const baseDrone = parseFloat(document.getElementById("base-drone")?.value) || 0;
+  const baseExtra = parseFloat(document.getElementById("base-extra")?.value) || 0;
+  const globalBaseDR = baseSF + baseDrone + baseExtra;
 
-  const totalBaseDR = (sf + drone + extra) / 100;
+  const currentSquadIdx = db.currentSquadIdx;
+  const squadData = db.squads[currentSquadIdx];
 
-  // 1. Initialisiere DR für jeden Slot
-  let heroStats = [0, 1, 2, 3, 4].map(() => ({
-    phys: totalBaseDR,
-    ener: totalBaseDR,
-  }));
+  if (!squadData || !squadData.slots) return;
 
-  const squad = db.squads[currentSquad].slots;
+  // const allHeroIds = squadData.slots.map(s => s?.id);
 
-  if (!window.currentHeroStats) window.currentHeroStats = {};
+  let frontlineBonus = 0;
+  let backlineBonus = 0;
 
-  for (let i = 0; i < 5; i++) {
-    const data = squad[i];
-    if (!data) continue;
+  // if (allHeroIds.includes("williams")) frontlineBonus += 10;
+  // if (allHeroIds.includes("marshall")) backlineBonus += 3; // Beispiel
 
-    const sourceHero = HERO_DATA.find((h) => h.id === data.id);
+  squadData.slots.forEach((heroData, slotIdx) => {
+    const drElement = document.getElementById(`dr-value-${slotIdx}`);
 
-    ["tactics", "passive"].forEach((sType) => {
-      const skill = sourceHero.skills[sType];
-      if (!skill) return;
+    if (!drElement) return;
 
-      // Berechnung des Skill-Werts basierend auf Level
-      let pVal = (skill.phys_base || 0) + (data.skills[sType] - 1) * (skill.phys_inc || 0);
-      let eVal = (skill.ener_base || 0) + (data.skills[sType] - 1) * (skill.ener_inc || 0);
+    if (!heroData || !heroData.id) {
+      drElement.innerText = "0.0%";
+      drElement.className = "text-2xl font-black italic text-gray-600 leading-none"; // Reset Style
+      return;
+    }
 
-      // Adam Special (verdoppelt seine eigene Passive)
-      if (skill.special === "double_passive") {
-        const pSkill = sourceHero.skills.passive;
-        pVal = (pSkill.phys_base || 0) + (data.skills.passive - 1) * (pSkill.phys_inc || 0);
-        eVal = (pSkill.ener_base || 0) + (data.skills.passive - 1) * (pSkill.ener_inc || 0);
-      }
+    const heroBase = HERO_DATA.find((h) => h.id === heroData.id);
+    if (!heroBase) return;
 
-      // Buffs auf die Ziele verteilen
-      for (let targetIdx = 0; targetIdx < 5; targetIdx++) {
-        const targetData = squad[targetIdx];
-        if (!targetData) continue;
+    let totalDR = globalBaseDR;
 
-        const targetHero = HERO_DATA.find((h) => h.id === targetData.id);
-        const isFront = targetIdx === 0 || targetIdx === 1;
+    if (heroBase.skills.tactics?.hasDR) {
+      const lvl = heroData.skills.tactics || 1;
+      const base = heroBase.skills.tactics.base || 0;
+      const inc = heroBase.skills.tactics.inc || 0;
+      totalDR += base + lvl * inc;
+    }
 
-        let applies = false;
-        if (skill.target === "all") applies = true;
-        if (skill.target === "self" && i === targetIdx) applies = true;
-        if (skill.target === "front" && isFront) applies = true;
-        if (skill.target === "back" && !isFront) applies = true;
-        if (skill.target === "same_type" && targetHero.cat === sourceHero.cat) applies = true;
+    if (heroBase.skills.passive?.hasDR) {
+      const lvl = heroData.skills.passive || 1;
+      const base = heroBase.skills.passive.base || 0;
+      const inc = heroBase.skills.passive.inc || 0;
+      totalDR += base + (lvl - 1) * inc;
+    }
 
-        if (applies) {
-          heroStats[targetIdx].phys += pVal;
-          heroStats[targetIdx].ener += eVal;
-        }
-      }
-    });
-  }
+    // Reihe (Front/Back)
+    if (slotIdx === 0 || slotIdx === 1) totalDR += frontlineBonus;
+    else totalDR += backlineBonus;
 
-  // 3. Speichere die Ergebnisse global, damit refreshSquadGrid darauf zugreifen kann
-  window.currentHeroStats = heroStats;
-  refreshSquadGrid();
-  updateSquadButtons();
+    drElement.innerText = totalDR.toFixed(1) + "%";
+
+    // Klassen-Management (wir überschreiben className komplett oder nutzen classList)
+    // Hier sicherstellen, dass wir die Tailwind-Basisklassen behalten
+    const baseClasses = "text-2xl font-black italic leading-none drop-shadow-md transition-colors duration-300";
+
+    if (totalDR >= 85) {
+      drElement.className = `${baseClasses} text-red-500`;
+    } else if (totalDR >= 70) {
+      drElement.className = `${baseClasses} text-yellow-400`;
+    } else {
+      drElement.className = `${baseClasses} text-blue-500`;
+    }
+  });
 }
 
 /**
  * UI REFRESH: GRID
  */
 function refreshSquadGrid() {
-  const squad = db.squads[currentSquad];
-  if (!squad) return;
-  const slotList = Array.isArray(squad.slots) ? squad.slots : Object.values(squad.slots);
-
-  for (let i = 0; i < 5; i++) {
-    const slotEl = document.getElementById(`slot-${i}`);
-    if (!slotEl) continue;
-
-    const data = slotList[i];
-    let phys = 0;
-    let ener = 0;
-
-    if (data) {
-      const hero = HERO_DATA.find((h) => h.id === data.id);
-      if (!hero) continue;
-
-      const maxSkill = (data.ex_lvl || 0) >= 30 ? 40 : 30;
-      const stats = window.currentHeroStats && window.currentHeroStats[i] ? window.currentHeroStats[i] : { phys: 0, ener: 0 };
-      window.currentHeroStats[i] = { phys, ener };
-      updateDisplay(`slot-${i}`, window.currentHeroStats[i]);
-
-      const physVal = stats.phys * 100;
-      const enerVal = stats.ener * 100;
-
-      // Dynamische Klassen für die Farben
-      const physColor = physVal >= 75 ? "text-green-400 font-black" : "text-white";
-      const enerColor = enerVal >= 75 ? "text-green-400 font-black" : "text-white";
-
-      slotEl.innerHTML = `
-      
-                <div class="hero-slot-card group">
-                    <img src="img/${hero.id}.png" onerror="handleImageError(this)" class="hero-slot-bg opacity-20">
-                    
-                    <div class="flex justify-between items-start relative z-10 mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl border-2 border-blue-500 overflow-hidden shadow-lg bg-gray-800">
-                                <img src="img/${hero.id}.png" onerror="handleImageError(this)" class="w-full h-full object-cover">
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-xs font-black text-white uppercase tracking-tighter">${hero.name}</span>
-                                <span class="text-[8px] font-bold text-blue-400 opacity-80 uppercase">${hero.cat}</span>
-                            </div>
-                        </div>
-                        
-                         <div id="stats-container-${i}" class="flex flex-col relative z-10 bg-gray-950/80 rounded-xl border border-white/5 overflow-hidden shadow-inner">
-    
-                            <div id="row-phys-${i}" 
-                                class="flex justify-between items-center px-3 py-2 hover:bg-white/5 transition-colors group/row"
-                                title="Reduction Cap: 75%. Overstacking helps against debuffs!">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_5px_rgba(249,115,22,0.5)]"></div>
-                                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Phys DR</span>
-                                </div>
-                                <span id="slot-${i}-phys" class="font-mono ${physColor} text-sm transition-all duration-300">
-                                    ${physVal.toFixed(1)}%
-                                </span>
-                            </div>
-
-                            <div id="row-ener-${i}" 
-                                class="flex justify-between items-center px-3 py-2 border-t border-gray-800 hover:bg-white/5 transition-colors group/row"
-                                title="Reduction Cap: 75%. Overstacking helps against debuffs!">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]"></div>
-                                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ener DR</span>
-                                </div>
-                                <span id="slot-${i}-ener" class="font-mono ${enerColor} text-sm transition-all duration-300">
-                                    ${enerVal.toFixed(1)}%
-                                </span>
-                            </div>
-                        </div>
-
-                        <button onclick="removeFromSquad(${i})" class="text-gray-500 hover:text-red-500 transition-colors text-xl font-bold">×</button>
-                    </div>
-
-                    <div class="relative z-10 flex items-center justify-between bg-yellow-900/20 p-2 rounded-xl mb-2 border border-yellow-600/30">
-                        <span class="text-[10px] text-yellow-500 font-black uppercase">Exclusive Weapon</span>
-                        <input type="number" value="${data.ex_lvl || 0}" min="0" max="30" 
-                               oninput="updateExLvl(${i}, this.value)" 
-                               class="input-field-small !w-10 !h-6 !text-xs">
-                    </div>
-
-                    <div class="relative z-10 flex flex-col gap-1 mb-1">
-                        ${["tactics", "passive"]
-                          .map((type) => {
-                            // Variablen-Scope FIX: Alles was 'type' nutzt, muss hier drin sein
-                            const s = hero.skills && hero.skills[type] ? hero.skills[type] : { name: "Skill", phys_base: 0, ener_base: 0 };
-                            const currentSkillLvl = data.skills && data.skills[type] ? (typeof data.skills[type] === "object" ? 1 : data.skills[type]) : 1;
-                            const hasDR = s && (s.phys_base > 0 || s.ener_base > 0 || s.special);
-
-                            return `
-                                <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/50 border ${hasDR ? "border-blue-500/30" : "border-gray-800 opacity-40"}">
-                                    <div class="flex flex-col">
-                                        <span class="text-[10px] text-gray-100 font-bold truncate w-24">${s.name || "Skill"}</span>
-                                        <span class="text-[9px] text-gray-300 uppercase">${type}</span>
-                                    </div>
-                             
-                                 
-                                         <input type="number" value="${data.ex_lvl || 0}" min="0" max="30" 
-                                            oninput="updateSkillLvl(${i}, this.value)" 
-                                            class="input-field-small">
-                                  
-                                </div>
-                            `;
-                          })
-                          .join("")}
-                    </div>
-  
-                </div>
-                
-            `;
-    } else {
-      slotEl.innerHTML = `
-        <div class="h-full w-full rounded-[2.5rem] border-4 border-dashed border-gray-800/50 flex flex-col items-center justify-center opacity-30 hover:opacity-50 transition-all bg-gray-900/20">
-                    <span class="text-7xl mb-6">🐢</span>
-                    <span class="text-lg text-gray-500 font-black uppercase tracking-[0.3em]">Empty Slot</span>
-        </div>
-            `;
-    }
+  if (!db || !db.squads) {
+    console.error("Datenbank nicht initialisiert");
+    return;
   }
+
+  if (!db.squads[db.currentSquadIdx]) {
+    console.warn("Ungültiger Squad-Index! Setze auf 0 zurück.");
+    switchSquad(0);
+  }
+
+  const currentSquad = db.squads[db.currentSquadIdx];
+  currentSquad.slots.forEach((hero, idx) => {
+    const slot = document.getElementById(`slot-${idx}`);
+    if (!slot) return;
+
+    const placeholder = document.getElementById(`empty-slot-placeholder-${idx}`);
+    const content = document.getElementById(`hero-content-${idx}`);
+    const isEmpty = !hero || !hero.id;
+    
+    if (placeholder && content) {
+      if (isEmpty) {
+        placeholder.classList.remove("hidden");
+        content.classList.add("hidden");
+      } else {
+        placeholder.classList.add("hidden");
+        content.classList.remove("hidden");
+
+        // Hier füllen wir die Daten in dein HTML
+        document.getElementById(`hero-name-${idx}`).innerText = hero.name;
+
+        // Falls du das Bild-Element findest:
+        const mainImg = content.querySelector(".flex-1 img");
+        if (mainImg) mainImg.src = `img/${hero.id}.png`;
+
+        // Splash Art im Hintergrund
+        const splashImg = content.querySelector(".hero-skew");
+        if (splashImg) splashImg.src = `img/${hero.id}.png`;
+      }
+    }
+
+    slot.className = "squad-slot relative overflow-hidden aspect-[3/4] rounded-[2rem] border-2 border-blue-500 bg-black shadow-2xl";
+
+    const pDR = 0;
+    const eDR = 0;
+  });
+
+  // Abstand-Check (Desktop Fix)
+  fitTacticalField();
 }
 
 function removeFromSquad(slotIdx) {
@@ -448,17 +456,19 @@ function updateExLvl(slotId, val) {
   saveAndRefresh();
 }
 
-function updateSkillLvl(slotIdx, type, newValue) {
-  const val = parseInt(newValue) || 1;
-  const squad = db.squads[currentSquad];
+function updateSkillLevel(slotIdx, type, value) {
+  let val = parseInt(value);
+  if (isNaN(val) || val < 1) val = 1;
 
-  // Sicherstellen, dass die Struktur existiert
-  if (!squad.slots[slotIdx].skills) {
-    squad.slots[slotIdx].skills = {};
+  const hero = db.squads[db.currentSquadIdx].slots[slotIdx];
+  if (!hero) {
+    console.error("Slot nicht gefunden:", slotIdx);
+    return;
   }
 
-  // NUR die Zahl speichern, kein Objekt!
-  squad.slots[slotIdx].skills[type] = val;
+  if (!hero.skills) hero.skills = {};
+
+  console.log(`Update Slot ${slotIdx}: ${type} ist jetzt Level ${val}`);
 
   saveAndRefresh();
 }
@@ -485,20 +495,34 @@ function updateBaseDR() {
 }
 
 function switchSquad(n) {
+  db.currentSquadIdx = n;
+
   currentSquad = n;
-  for (let i = 1; i <= 3; i++) {
-    document.getElementById(`btn-squad-${i}`).classList.toggle("bg-blue-600", i === n);
-    document.getElementById(`btn-squad-${i}`).classList.toggle("text-white", i === n);
+  for (let i = 0; i < 3; i++) {
+    const btn = document.getElementById(`squad-btn-${i}`);
+    if (btn) {
+      // WICHTIG: Nur ausführen, wenn der Button existiert!
+      if (i === idx) {
+        btn.classList.add("bg-blue-600", "text-white");
+        btn.classList.remove("text-gray-500");
+      } else {
+        btn.classList.remove("bg-blue-600", "text-white");
+        btn.classList.add("text-gray-500");
+      }
+    }
   }
+
   saveAndRefresh();
 }
 
 function saveAndRefresh() {
+  calculateDR();
+
   localStorage.setItem("dr_analyst_v4_db", JSON.stringify(db));
-  refreshSquadGrid(); // UI bauen
-  calculateDR(); // Mathe machen
-  updateMetaStatus(); // Meta prüfen & Glanz aktivieren
-  updateSquadButtons(); // Namen oben aktualisieren
+
+  refreshSquadGrid();
+  updateMetaStatus();
+  updateSquadButtons();
 }
 
 function showToast(message, type = "error") {
@@ -744,8 +768,9 @@ function applyMetaVisuals(metaType) {
 }
 
 function handleImageError(img) {
-  img.onerror = null; // Verhindert Endlosschleife, falls placeholder auch fehlt
-  img.src = "img/placeholder.jpg"; // Stelle sicher, dass die Datei existiert!
+  img.onerror = null;
+  // img.src = "img/placeholder.jpg";
+  img.src = "img/new-turtle.png";
 }
 
 function resetFullDatabase() {
@@ -759,4 +784,90 @@ function resetFullDatabase() {
   }
 }
 
+let selectedHeroId = null;
+
+// Im Hero-Storage:
+function handleHeroClick(heroId) {
+  if (window.innerWidth < 1024) {
+    selectedHeroId = heroId;
+    showToast("Held ausgewählt. Klicke jetzt auf einen Slot!", "success");
+  }
+}
+
+// In der refreshSquadGrid für leere Slots:
+// Füge ein onclick="handleSlotClick(${i})" hinzu
+function handleSlotClick(slotIdx) {
+  if (selectedHeroId) {
+    // Nutze deine existierende Logik um den Helden zu platzieren
+    placeHeroInSlot(selectedHeroId, slotIdx);
+    selectedHeroId = null;
+  }
+}
+
+let modalFilter = "All";
+let modalSearchQuery = "";
+
+function setModalFilter(type) {
+  modalFilter = type;
+  // Visuelles Feedback für die Buttons
+  document.querySelectorAll(".modal-filter-btn").forEach((btn) => {
+    const isActive = btn.innerText.includes(type.toUpperCase());
+    btn.classList.toggle("border-blue-500", isActive);
+    btn.classList.toggle("text-blue-400", isActive);
+    btn.classList.toggle("bg-blue-500/10", isActive);
+  });
+  filterModalHeroes();
+}
+
+function filterModalHeroes() {
+  modalSearchQuery = document.getElementById("modal-search").value.toLowerCase();
+
+  // Wir nutzen die bestehende renderHeroStorage, übergeben aber
+  // die Modal-spezifischen Filterwerte
+  renderHeroStorage(window.lastNerziState, true);
+}
+
+function fitTacticalField() {
+  const field = document.getElementById("tactical-field");
+  const main = field.parentElement;
+
+  if (!field || !main) return;
+
+  // 1. Wir holen uns die berechneten Abstände (Padding) vom Main-Element
+  const style = window.getComputedStyle(main);
+  const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+
+  // 2. Verfügbarer Platz abzüglich der "Sicherheitszone" (Padding)
+  const availableW = main.clientWidth - paddingX;
+  const availableH = main.clientHeight - paddingY;
+
+  // 3. Wie groß ist das Feld unskaliert?
+  // Wir nutzen die natürliche Größe (offsetWidth), setzen die Skalierung dafür kurz auf 1
+  field.style.transform = "scale(1)";
+  const fieldW = field.offsetWidth;
+  const fieldH = field.offsetHeight;
+
+  // 4. Skalierung berechnen (Breite oder Höhe, je nachdem was zuerst knapp wird)
+  let scale = Math.min(availableW / fieldW, availableH / fieldH);
+
+  // 5. Nicht größer als 100% skalieren (außer du willst Zoom auf 4K Monitoren)
+  scale = Math.min(scale, 1);
+
+  // 6. Auf Mobile (unter 768px) Skalierung meist ignorieren, da wir dort scrollen
+  if (window.innerWidth < 768) {
+    field.style.transform = "scale(1)";
+  } else {
+    field.style.transform = `scale(${scale})`;
+    field.style.transformOrigin = "center center";
+  }
+}
+
 window.onload = init;
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Initialisiert deine Daten und zeichnet das Grid
+  refreshSquadGrid();
+  renderHeroStorage();
+  if (typeof fitTacticalField === "function") fitTacticalField();
+});

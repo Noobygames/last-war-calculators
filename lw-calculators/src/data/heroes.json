@@ -1,0 +1,170 @@
+[
+  {
+    "id": "murphy",
+    "name": "Murphy",
+    "cat": "Tank",
+    "skills": {
+      "auto": { "name": "Standard Fire", "hasDR": false },
+      "tactics": { "name": "Iron Shield", "hasDR": true, "base": 14, "inc": 0.1, "target": "front" },
+      "passive": { "name": "Physical Training", "hasDR": false }
+    }
+  },
+  {
+    "id": "williams",
+    "name": "Williams",
+    "cat": "Tank",
+    "skills": {
+      "auto": { "name": "Pistol Shot", "hasDR": false },
+      "tactics": { "name": "Charge!", "hasDR": true, "base": 21, "inc": 0.3, "target": "self" },
+      "passive": { "name": "Battle Hardened", "hasDR": false }
+    }
+  },
+  {
+    "id": "marshall",
+    "name": "Marshall",
+    "cat": "Tank",
+    "skills": {
+      "auto": { "name": "Assault", "hasDR": false },
+      "tactics": { "name": "Inspiration", "hasDR": false },
+      "passive": { "name": "Unity", "hasDR": true, "base": 9, "inc": 0.1, "target": "team" }
+    }
+  },
+  {
+    "id": "scarlett",
+    "name": "Scarlett",
+    "cat": "Tank",
+    "skills": {
+      "auto": { "name": "Rapid Fire", "hasDR": false },
+      "tactics": { "name": "Covering", "hasDR": true, "base": 20, "inc": 0.2, "target": "self" },
+      "passive": { "name": "Endurance", "hasDR": false }
+    }
+  },
+  {
+    "id": "violet",
+    "name": "Violet",
+    "cat": "Tank",
+    "skills": {
+      "auto": { "name": "Sentry", "hasDR": false },
+      "tactics": { "name": "Chemical Bomb", "hasDR": false },
+      "passive": { "name": "Anti-Armor", "hasDR": true, "base": 7, "inc": 0.12, "target": "front" }
+    }
+  },
+  {
+    "id": "kimberly",
+    "name": "Kimberly",
+    "cat": "Tank",
+    "skills": { "auto": { "name": "Rocket", "hasDR": false }, "tactics": { "name": "Barrage", "hasDR": false }, "passive": { "name": "Crit Master", "hasDR": false } }
+  },
+  {
+    "id": "stetman",
+    "name": "Stetman",
+    "cat": "Tank",
+    "skills": { "auto": { "name": "Laser", "hasDR": false }, "tactics": { "name": "Research", "hasDR": false }, "passive": { "name": "Energy Boost", "hasDR": false } }
+  },
+  {
+    "id": "lucius",
+    "name": "Lucius",
+    "cat": "Aircraft",
+    "skills": {
+      "auto": { "name": "Air Strike", "hasDR": false },
+      "tactics": { "name": "Energy Cover", "hasDR": true, "base": 25, "inc": 0.33, "target": "team" },
+      "passive": { "name": "Wingman", "hasDR": true, "base": 5, "inc": 0.05, "target": "team" }
+    }
+  },
+  {
+    "id": "carlie",
+    "name": "Carlie",
+    "cat": "Aircraft",
+    "skills": {
+      "auto": { "name": "Flight Mode", "hasDR": false },
+      "tactics": { "name": "Evasive Maneuver", "hasDR": true, "base": 28, "inc": 0.4, "target": "self" },
+      "passive": { "name": "Armor Plate", "hasDR": false }
+    }
+  },
+  {
+    "id": "dva",
+    "name": "DVA",
+    "cat": "Aircraft",
+    "skills": {
+      "auto": { "name": "Missile", "hasDR": false },
+      "tactics": { "name": "Jet Stream", "hasDR": false },
+      "passive": { "name": "Aerial Link", "hasDR": true, "base": 0, "inc": 0.15, "target": "team" }
+    }
+  },
+  {
+    "id": "morrison",
+    "name": "Morrison",
+    "cat": "Aircraft",
+    "skills": { "auto": { "name": "Bombs", "hasDR": false }, "tactics": { "name": "Carpet Bomb", "hasDR": false }, "passive": { "name": "Support", "hasDR": false } }
+  },
+  {
+    "id": "shuyler",
+    "name": "Shuyler",
+    "cat": "Aircraft",
+    "skills": { "auto": { "name": "Snipe", "hasDR": false }, "tactics": { "name": "Tactic Eye", "hasDR": false }, "passive": { "name": "Precision", "hasDR": false } }
+  },
+  {
+    "id": "sarah",
+    "name": "Sarah",
+    "cat": "Aircraft",
+    "skills": { "auto": { "name": "Pulse", "hasDR": false }, "tactics": { "name": "Recovery", "hasDR": false }, "passive": { "name": "Medic", "hasDR": false } }
+  },
+  {
+    "id": "mcgregor",
+    "name": "McGregor",
+    "cat": "Missile",
+    "skills": {
+      "auto": { "name": "Rocket", "hasDR": false },
+      "tactics": { "name": "Hardened Shell", "hasDR": true, "base": 21, "inc": 0.3, "target": "self" },
+      "passive": { "name": "Iron Wall", "hasDR": false }
+    }
+  },
+  {
+    "id": "adam",
+    "name": "Adam",
+    "cat": "Missile",
+    "skills": {
+      "auto": { "name": "Bash", "hasDR": false },
+      "tactics": { "name": "Guardian", "hasDR": true, "base": 10, "inc": 0.1, "target": "front" },
+      "passive": { "name": "Shield", "hasDR": false }
+    }
+  },
+  {
+    "id": "swift",
+    "name": "Swift",
+    "cat": "Missile",
+    "skills": {
+      "auto": { "name": "Speed", "hasDR": false },
+      "tactics": { "name": "Blink", "hasDR": true, "base": 5, "inc": 0.1, "target": "self" },
+      "passive": { "name": "Reflex", "hasDR": false }
+    }
+  },
+  {
+    "id": "tesla",
+    "name": "Tesla",
+    "cat": "Missile",
+    "skills": { "auto": { "name": "Shock", "hasDR": false }, "tactics": { "name": "Thunder", "hasDR": false }, "passive": { "name": "Overload", "hasDR": false } }
+  },
+  {
+    "id": "fiona",
+    "name": "Fiona",
+    "cat": "Missile",
+    "skills": { "auto": { "name": "Heal", "hasDR": false }, "tactics": { "name": "Nature", "hasDR": false }, "passive": { "name": "Grace", "hasDR": false } }
+  },
+  {
+    "id": "venom",
+    "name": "Venom",
+    "cat": "Missile",
+    "skills": { "auto": { "name": "Toxic", "hasDR": false }, "tactics": { "name": "Corrosion", "hasDR": false }, "passive": { "name": "Miasma", "hasDR": false } }
+  },
+  {
+    "id": "nerzi",
+    "name": "Nerzi",
+    "cat": "Aircraft",
+    "skills": {
+      "auto": { "name": "Killing fun", "hasDR": false },
+      "tactics": { "name": "Eco Forever!", "hasDR": true, "base": 10, "inc": 0.1 },
+      "passive": { "name": "Bum Protection!", "hasDR": true, "base": 10, "inc": 0.1 }
+    }
+  }
+]

@@ -1,9 +1,16 @@
 import { useEffect, useRef } from 'react';
 import SquadSlot from './SquadSlot';
-import { useSquad } from '../context/SquadContext'; 
+
+// Helper defined outside of component hoping to prevent rerenders
+const renderSlot = (idx: number, classNameOverride: string) => (
+  <div className={classNameOverride} key={idx}>
+    <SquadSlot 
+      slotIdx={idx}
+    />
+  </div>
+);
 
 export default function TacticalField() {
-  const { currentSquad } = useSquad();
   const fieldRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,14 +46,6 @@ export default function TacticalField() {
     setTimeout(fitTacticalField, 100);
     return () => window.removeEventListener("resize", fitTacticalField);
   }, []);
-
-  const renderSlot = (idx: number, classNameOverride: string) => (
-    <div className={classNameOverride} key={idx}>
-      <SquadSlot 
-        slotIdx={idx}
-      />
-    </div>
-  );
 
   return (
     <div id="tactical-field" ref={fieldRef} className="grid grid-cols-12 gap-1 md:gap-8 w-full max-w-5xl mx-auto">

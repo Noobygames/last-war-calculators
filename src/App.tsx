@@ -6,7 +6,8 @@ import HeroStorage from './components/HeroStorage';
 import ConfirmationModal from './components/ConfirmationModal';
 import HeroSelectionModal from './components/HeroSelectionModal';
 import BaseStatsModal from './components/BaseStatsModal';
-import { SquadProvider, useSquad } from './context/SquadContext';
+import { useSquad } from './context/SquadContext';
+import { SquadProvider } from './context/SquadProvider';
 
 function AppContent() {
   const { 
@@ -40,8 +41,7 @@ function AppContent() {
         <Sidebar />
 
         <main 
-          className="flex flex-1 flex-col items-center justify-center p-4 md:p-20 overflow-hidden bg-black relative"
-          style={{ background: 'radial-gradient(circle at center, #111827 0%, #030712 50%, #000000 100%)' }}
+          className="flex flex-1 flex-col items-center justify-center p-4 md:p-20 overflow-hidden bg-[image:radial-gradient(circle_at_center,var(--color-surface-main)_0%,var(--color-surface-dark)_50%,black_100%)] relative"
         >
           <TacticalField />
         </main>
@@ -49,23 +49,29 @@ function AppContent() {
         <HeroStorage />
       </div>
 
-       <ConfirmationModal 
-        isOpen={modalConfig.isOpen}
-        message={modalConfig.message}
-        onConfirm={modalConfig.onConfirm}
-        onCancel={closeModal}
-      />
+      {modalConfig.isOpen && (
+        <ConfirmationModal 
+          isOpen={modalConfig.isOpen}
+          message={modalConfig.message}
+          onConfirm={modalConfig.onConfirm}
+          onCancel={closeModal}
+        />
+      )}
 
-      <HeroSelectionModal 
-        isOpen={selectionModalConfig.isOpen}
-        onSelect={selectHeroForSlot}
-        onClose={closeSelectionModal}
-      />
+      {selectionModalConfig.isOpen && (
+        <HeroSelectionModal 
+          isOpen={selectionModalConfig.isOpen}
+          onSelect={selectHeroForSlot}
+          onClose={closeSelectionModal}
+        />
+      )}
 
-      <BaseStatsModal 
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {isSettingsOpen && (
+        <BaseStatsModal 
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }

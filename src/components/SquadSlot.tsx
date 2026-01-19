@@ -1,5 +1,6 @@
-import React from 'react';
-import { useSquad } from '../context/SquadContext';
+import type { DragEvent, KeyboardEvent } from "react";
+import { useSquad } from "../context/SquadContext";
+import { Tooltip } from "./Tooltip";
 
 interface SquadSlotProps {
   slotIdx: number;
@@ -7,21 +8,11 @@ interface SquadSlotProps {
 
 // Interne Sub-Komponente für die Stats-Inputs
 // Reduziert Codeduplizierung und verbessert die Lesbarkeit
-const StatInput = ({ 
-  label, 
-  value, 
-  onChange, 
-  color 
-}: { 
-  label: string; 
-  value: number; 
-  onChange: (val: string) => void; 
-  color: 'blue' | 'purple' | 'yellow';
-}) => {
+const StatInput = ({ label, value, onChange, color }: { label: string; value: number; onChange: (val: string) => void; color: "blue" | "purple" | "yellow" }) => {
   const colors = {
-    blue: { dot: 'bg-blue-500', text: 'text-blue-300', border: 'focus:border-blue-500' },
-    purple: { dot: 'bg-purple-500', text: 'text-purple-300', border: 'focus:border-purple-500' },
-    yellow: { dot: 'bg-yellow-500', text: 'text-yellow-300', border: 'focus:border-yellow-500' },
+    blue: { dot: "bg-rarity-sr", text: "text-primary-soft", border: "focus:border-rarity-sr" },
+    purple: { dot: "bg-rarity-ssr", text: "text-secondary-soft", border: "focus:border-rarity-ssr" },
+    yellow: { dot: "bg-rarity-ur", text: "text-accent-soft", border: "focus:border-rarity-ur" },
   }[color];
 
   return (
@@ -32,40 +23,29 @@ const StatInput = ({
         type="number"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`min-w-0 flex-1 bg-gray-900/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right ${colors.text} ${colors.border} outline-none transition-colors`}
+        className={`min-w-0 flex-1 bg-surface-main/80 border border-white/10 rounded px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs text-right ${colors.text} ${colors.border} outline-none transition-colors`}
       />
     </div>
   );
 };
 
-export default function SquadSlot({ 
-  slotIdx
-}: SquadSlotProps) {
-  const { 
-    currentSquad, 
-    assignHero, 
-    removeHero, 
-    updateHeroSlot, 
-    updateSkill, 
-    metaStatus, 
-    calculateDR, 
-    openSelectionModal 
-  } = useSquad();
+export default function SquadSlot({ slotIdx }: SquadSlotProps) {
+  const { currentSquad, assignHero, removeHero, updateHeroSlot, updateSkill, metaStatus, calculateDR, openSelectionModal } = useSquad();
 
   const hero = currentSquad.slots[slotIdx];
   const drStats = calculateDR(slotIdx);
   const isMeta = !!metaStatus.metaType;
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
     e.currentTarget.classList.add("drag-over");
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (e: DragEvent) => {
     e.currentTarget.classList.remove("drag-over");
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.classList.remove("drag-over");
@@ -74,16 +54,22 @@ export default function SquadSlot({
   };
 
   const getDRColor = (val: number) => {
-    if (val >= 85) return "text-red-500";
-    if (val >= 70) return "text-yellow-400";
-    return "text-blue-500";
+    if (val >= 75) return "text-stat-good";
+    if (val >= 50) return "text-stat-avg";
+    return "text-stat-base";
   };
 
-  const handleDragStart = (e: React.DragEvent) => {
+  const handleDragStart = (e: DragEvent) => {
     if (hero.id) {
       e.dataTransfer.setData("heroId", hero.id);
       e.dataTransfer.setData("fromSlotIdx", slotIdx.toString());
       e.dataTransfer.effectAllowed = "move";
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      openSelectionModal(slotIdx);
     }
   };
 
@@ -92,62 +78,94 @@ export default function SquadSlot({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`col-span-4 squad-slot aspect-[3/4] rounded-[1.5rem] border border-gray-700 bg-gray-900 relative overflow-hidden group hover:border-blue-500/50 transition-all duration-300 shadow-xl ${hero.id ? 'occupied' : ''} ${isMeta ? 'meta-active' : ''}`}
-    >
+      className={`col-span-4 squad-slot aspect-[3/4] rounded-[1.5rem] border border-surface-border bg-surface-main relative overflow-hidden group hover:border-rarity-sr/50 transition-all duration-300 ease-in-out shadow-xl 
+        ${hero.id ? "border-solid animate-border-glow" : ""} 
+        ${isMeta ? "!animate-meta-glow !border-solid" : ""}
+        [&.drag-over]:!border-primary 
+        [&.drag-over]:!bg-primary/15 
+        [&.drag-over]:shadow-[0_0_25px_color-mix(in_srgb,var(--color-primary),transparent_60%)] 
+        [&.drag-over]:scale-105 
+        [&.drag-over]:-translate-y-[5px] 
+        [&.drag-over]:z-20
+      `}>
       {!hero.id ? (
-        <div 
+        <button
+          type="button"
           onClick={() => openSelectionModal(slotIdx)}
-          className="absolute inset-0 z-0 flex flex-col items-center justify-center transition-opacity duration-300 cursor-pointer hover:bg-white/5"
-        >
+          className="absolute inset-0 z-0 flex flex-col items-center justify-center transition-opacity duration-300 cursor-pointer hover:bg-white/5 w-full h-full outline-none focus:bg-white/10">
           <div className="text-5xl lg:text-6xl mb-2 opacity-20 grayscale group-hover:opacity-40 transition-opacity">🐢</div>
           <div className="flex flex-col items-center">
-            <span className="text-3xl font-bold text-gray-600 group-hover:text-blue-500 transition-colors mb-1">+</span>
-            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-600 group-hover:text-blue-400 transition-colors">Click to Add</span>
+            <span className="text-3xl font-bold text-gray-600 group-hover:text-rarity-sr transition-colors mb-1">+</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-gray-600 group-hover:text-primary-highlight transition-colors">Click to Add</span>
           </div>
-        </div>
+        </button>
       ) : (
-        <div className="relative z-10 w-full h-full flex flex-col cursor-pointer" onClick={() => openSelectionModal(slotIdx)} draggable={!!hero.id} onDragStart={handleDragStart}>
+        <div
+          className="relative z-10 size-full flex flex-col cursor-pointer outline-none focus:ring-2 focus:ring-primary/50 rounded-[1.5rem]"
+          onClick={() => openSelectionModal(slotIdx)}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          role="button"
+          aria-label={`Edit ${hero.name}`}
+          draggable={!!hero.id}
+          onDragStart={handleDragStart}>
           <div className="absolute inset-0 z-0">
             <img
               src={`img/${hero.id}.png`}
-              onError={(e) => { (e.target as HTMLImageElement).src = 'img/new-turtle.png'; }}
-              className="absolute -right-10 -top-10 w-[110%] h-[110%] object-cover opacity-40 mix-blend-luminosity hero-skew pointer-events-none"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "img/new-turtle.png";
+              }}
+              className="absolute -right-10 -top-10 size-[110%] object-cover opacity-40 mix-blend-luminosity skew-x-[-15deg] scale-[1.3] transition-transform duration-500 ease-out pointer-events-none"
               alt="splash"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-900/60 via-gray-900/80 to-black"></div>
+            <div className="absolute inset-0 bg-linear-to-b from-surface-main/60 via-surface-main/80 to-black"></div>
           </div>
 
           <div className="relative z-10 flex items-start gap-3 p-3 md:p-4 pb-0 h-[45%]">
-            <div className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-16 lg:w-20 lg:h-20 object-contain rounded-xl overflow-hidden border-2 border-gray-600 bg-gray-800 shadow-lg group-hover:border-blue-500/50 transition-colors">
-              <img 
-                src={`img/${hero.id}.png`} 
-                onError={(e) => { (e.target as HTMLImageElement).src = 'img/placeholder.jpg'; }}
-                className="w-full h-full object-cover" 
-                alt={hero.name} 
+            <div className="relative size-8 sm:size-10 md:size-16 lg:size-20 object-contain rounded-xl overflow-hidden border-2 border-gray-600 bg-surface-card shadow-lg group-hover:border-rarity-sr/50 transition-colors">
+              <img
+                src={`img/${hero.id}.png`}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "img/placeholder.jpg";
+                }}
+                className="size-full object-cover"
+                alt={hero.name}
               />
             </div>
 
             <div className="flex-1 flex flex-col justify-center min-w-0 pl-1 pr-8">
               <div className="flex justify-between items-center border-b border-white/5 pb-0.5 mb-0.5">
                 <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Phys</span>
-                <span className={`text-[10px] sm:text-sm md:text-[12px] lg:text-[16px] font-black italic leading-none ${getDRColor(drStats.phys)}`}>
-                  {drStats.phys.toFixed(1)}%
-                </span>
+                <Tooltip text="Physical Damage Reduction: Heroes like Swift, Fiona or Morrison deal Physical Damage">
+                  <span className={`text-[10px] sm:text-sm md:text-[12px] lg:text-[16px] font-black italic leading-none ${getDRColor(drStats.phys)}`}>
+                    {drStats.phys.toFixed(1)}%
+                  </span>
+                </Tooltip>
               </div>
+
               <div className="flex justify-between items-center">
                 <span className="text-[8px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Ener</span>
-                <span className={`text-[10px] sm:text-sm md:text-[12px] lg:text-[16px] font-black italic leading-none ${getDRColor(drStats.ener)}`}>
-                  {drStats.ener.toFixed(1)}%
-                </span>
+                <Tooltip text="Energy Damage Reduction: Heroes like Kim, Stetman or DVA deal Energy Damage">
+                  <span className={`text-[10px] sm:text-sm md:text-[12px] lg:text-[16px] font-black italic leading-none ${getDRColor(drStats.ener)}`}>
+                    {drStats.ener.toFixed(1)}%
+                  </span>
+                </Tooltip>
               </div>
             </div>
 
-            <button onClick={(e) => {
-              e.stopPropagation();
-              removeHero(slotIdx);
-            }} className="absolute top-2 right-2 bg-black/60 text-red-500 hover:bg-red-600 hover:text-white transition-all p-2 rounded-full z-20 cursor-pointer shadow-sm border border-white/10 backdrop-blur-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-0.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeHero(slotIdx);
+              }}
+              className="absolute top-2 right-2 bg-black/60 text-danger hover:bg-danger-dark hover:text-white transition-all p-2 rounded-full z-20 cursor-pointer shadow-sm border border-white/10 backdrop-blur-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="size-5 ml-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
           </div>
@@ -157,28 +175,17 @@ export default function SquadSlot({
               {hero.name}
             </div>
 
-            <div 
-              className="grid grid-cols-1 gap-1 sm:gap-1.5 bg-black/40 rounded-lg sm:rounded-xl p-1.5 sm:p-2 border border-white/5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <StatInput 
-                label="EW" 
-                value={hero.ex_lvl || 0} 
-                onChange={(val) => updateHeroSlot(slotIdx, { ex_lvl: parseInt(val, 10) || 0 })} 
-                color="blue" 
-              />
-              <StatInput 
-                label="Pas" 
-                value={hero.skills?.passive || 1} 
-                onChange={(val) => updateSkill(slotIdx, 'passive_lvl', val)} 
-                color="purple" 
-              />
-              <StatInput 
-                label="Tac" 
-                value={hero.skills?.tactics || 1} 
-                onChange={(val) => updateSkill(slotIdx, 'tactics_lvl', val)} 
-                color="yellow" 
-              />
+            <div className="grid grid-cols-1 gap-1 sm:gap-1.5 bg-black/40 rounded-lg sm:rounded-xl p-1.5 sm:p-2 border border-white/5" onClick={(e) => e.stopPropagation()}>
+              <Tooltip text="The current Exclusive Weapon Level of the Hero. Influences the maximum Level of Skills and also the Damage Resistance">
+                <StatInput label="EW" value={hero.ex_lvl || 0} onChange={(val) => updateHeroSlot(slotIdx, { ex_lvl: parseInt(val, 10) || 0 })} color="blue" />
+              </Tooltip>
+
+              <Tooltip text="The level of the passive skill. The bottom left skill.">
+                <StatInput label="Pas" value={hero.skills?.passive || 1} onChange={(val) => updateSkill(slotIdx, "passive_lvl", val)} color="purple" />
+              </Tooltip>
+              <Tooltip text="The level of the tactics skill. The top right skill.">
+                <StatInput label="Tac" value={hero.skills?.tactics || 1} onChange={(val) => updateSkill(slotIdx, "tactics_lvl", val)} color="yellow" />
+              </Tooltip>
             </div>
           </div>
         </div>

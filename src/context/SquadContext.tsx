@@ -1,19 +1,9 @@
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 import { useSquadManager } from '../hooks/useSquadManager';
 
 type SquadManagerType = ReturnType<typeof useSquadManager>;
 
-const SquadContext = createContext<SquadManagerType | null>(null);
-
-export function SquadProvider({ children }: { children: ReactNode }) {
-  const squadManager = useSquadManager();
-
-  return (
-    <SquadContext.Provider value={squadManager}>
-      {children}
-    </SquadContext.Provider>
-  );
-}
+export const SquadContext = createContext<SquadManagerType | null>(null);
 
 export function useSquad() {
   const context = useContext(SquadContext);

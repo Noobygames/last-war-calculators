@@ -1,9 +1,11 @@
+export type SkillTarget = "self" | "front" | "back" | "all" | "self_front";
+
 export interface SkillDef {
   name: string;
   hasDR: boolean;
   base?: number;
   inc?: number;
-  target?: string;
+  target?: SkillTarget;
 }
 
 export interface HeroBase {

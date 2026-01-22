@@ -54,12 +54,15 @@ export interface GlobalBaseStats {
 
   drone_quantum_chip_ac_lvl: GlobalStat;
   drone_memory_chip_ac_lvl: GlobalStat;
+  drone_chip_ac_squad: GlobalStat;
 
   drone_quantum_chip_missile_lvl: GlobalStat;
   drone_memory_chip_missile_lvl: GlobalStat;
+  drone_chip_missile_squad: GlobalStat;
 
   drone_quantum_chip_tank_lvl: GlobalStat;
   drone_memory_chip_tank_lvl: GlobalStat;
+  drone_chip_tank_squad: GlobalStat;
 
   other_red: GlobalStat;
 }

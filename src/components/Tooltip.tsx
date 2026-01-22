@@ -5,9 +5,10 @@ interface TooltipProps {
   text: string;
   imageSrc?: string;
   children: ReactNode;
+  className?: string;
 }
 
-export function Tooltip({ text, imageSrc, children }: TooltipProps) {
+export function Tooltip({ text, imageSrc, children, className }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
@@ -55,7 +56,7 @@ export function Tooltip({ text, imageSrc, children }: TooltipProps) {
   return (
     <div
       ref={triggerRef}
-      className="relative inline-flex"
+      className={`relative inline-flex ${className || ""}`}
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >

@@ -41,6 +41,7 @@ export interface Squad {
 
 export interface GlobalStat {
   level: number;
+  damageReductionGroup: number;
   calculatedPhysicalReduction: number;
   calculatedEnergyReduction: number;
   description: string;
@@ -64,7 +65,7 @@ export interface GlobalBaseStats {
   drone_memory_chip_tank_lvl: GlobalStat;
   drone_chip_tank_squad?: GlobalStat;
 
-  other_red: GlobalStat;
+  gorilla_skill_passive_level: GlobalStat;
 }
 
 export interface AppDB {

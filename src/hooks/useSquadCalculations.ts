@@ -41,8 +41,12 @@ export function useSquadCalculations(db: AppDB) {
 
   const squadDRStats = useMemo(() => {
     const baseStats = db.globalBaseStats;
-    const globalPhys = baseStats.drone_lvl.calculatedPhysicalReduction + baseStats.sf_advanced_protection_1.calculatedPhysicalReduction + baseStats.sf_advanced_protection_2.calculatedPhysicalReduction + baseStats.other_red.calculatedPhysicalReduction;
-    const globalEner = baseStats.drone_lvl.calculatedEnergyReduction + baseStats.sf_advanced_protection_1.calculatedEnergyReduction + baseStats.sf_advanced_protection_2.calculatedEnergyReduction + baseStats.other_red.calculatedEnergyReduction;
+    const globalPhys =
+      baseStats.sf_advanced_protection_1.calculatedPhysicalReduction +
+      baseStats.sf_advanced_protection_2.calculatedPhysicalReduction;
+    const globalEner =
+      baseStats.sf_advanced_protection_1.calculatedEnergyReduction +
+      baseStats.sf_advanced_protection_2.calculatedEnergyReduction;
     return currentSquad.slots.map((slot) => {
       let phys = globalPhys;
       let ener = globalEner;
@@ -57,6 +61,7 @@ export function useSquadCalculations(db: AppDB) {
         phys += baseStats.drone_quantum_chip_ac_lvl.calculatedPhysicalReduction + baseStats.drone_memory_chip_ac_lvl.calculatedPhysicalReduction;
         ener += baseStats.drone_quantum_chip_ac_lvl.calculatedEnergyReduction + baseStats.drone_memory_chip_ac_lvl.calculatedEnergyReduction;
       }
+      
 
       return { phys, ener };
     });

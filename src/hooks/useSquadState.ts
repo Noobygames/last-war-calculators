@@ -20,16 +20,16 @@ const initialDb: AppDB = {
     { name: "Squad 3", slots: Array.from({ length: 5 }, createEmptySlot) },
   ],
   globalBaseStats: {
-    sf_advanced_protection_1: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 1: Special Forces Technologie" },
-    sf_advanced_protection_2: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 2: Special Forces Technologie" },
-    drone_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Current Level of your drone" },
-    drone_quantum_chip_ac_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for AirCraft Heroes. (Middle Chip)" },
-    drone_memory_chip_ac_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for AirCraft Heroes. (Left Chip)" },
-    drone_quantum_chip_missile_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Missile Heroes. (Middle Chip)" },
-    drone_memory_chip_missile_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Missile Heroes. (Left Chip)" },
-    drone_quantum_chip_tank_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Tank Heroes. (Middle Chip)" },
-    drone_memory_chip_tank_lvl: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Tank Heroes. (Left Chip)" },
-    other_red: { level: 0, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "% of all other damage reduction, that does not have an input field in here" },
+    sf_advanced_protection_1: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 1: Special Forces Technologie" },
+    sf_advanced_protection_2: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Advanced Protection Node 2: Special Forces Technologie" },
+    drone_lvl: { level: 0, damageReductionGroup: 3, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Current Level of your drone" },
+    drone_quantum_chip_ac_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for AirCraft Heroes. (Middle Chip)" },
+    drone_memory_chip_ac_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for AirCraft Heroes. (Left Chip)" },
+    drone_quantum_chip_missile_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Missile Heroes. (Middle Chip)" },
+    drone_memory_chip_missile_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Missile Heroes. (Left Chip)" },
+    drone_quantum_chip_tank_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Quantum Chip for Tank Heroes. (Middle Chip)" },
+    drone_memory_chip_tank_lvl: { level: 0, damageReductionGroup: 1, calculatedPhysicalReduction: 0, calculatedEnergyReduction: 0, description: "Level of your Memory Fission Chip for Tank Heroes. (Left Chip)" },
+    gorilla_skill_passive_level: { level: 0, damageReductionGroup: 1, calculatedEnergyReduction: 0, calculatedPhysicalReduction:0, description: "Level of your Gorillas Overlord-Armor Skill (passive)"},
   },
   heroStats: {},
 };
@@ -78,9 +78,9 @@ export function useSquadState() {
     } else if (key.includes("chip")) {
       phys = 0;
       ener = 0;
-    } else if (key === "other_red") {
-      phys = val;
-      ener = val;
+    } else if (key.startsWith("overlord")) {
+      phys = 4 + 0.1 * val;
+      ener = 4 + 0.1 * val;
     }
 
     setDb((prev) => ({

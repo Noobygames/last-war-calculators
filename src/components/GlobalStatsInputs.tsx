@@ -117,26 +117,6 @@ export default function GlobalStatsInputs({ idPrefix }: GlobalStatsInputsProps) 
           <p className="text-[9px] text-gray-500 italic">Provides 5% DR at Level 200+</p>
         </div>
       </div>
-
-      <div className="space-y-4">
-        <h3 className="text-[10px] font-black text-secondary-soft uppercase tracking-widest border-b border-secondary/30 pb-1">Decorations & Mastery</h3>
-        <div className="space-y-2">
-          <Tooltip text={globalStats.other_red?.description || ""} className="w-full block">
-            <label htmlFor={`${idPrefix}-other_red`} className="block text-[10px] font-bold text-gray-500 uppercase cursor-help hover:text-white transition-colors">
-              Other Reduction (%)
-            </label>
-          </Tooltip>
-          <input
-            id={`${idPrefix}-other_red`}
-            type="number"
-            value={globalStats.other_red?.level || ""}
-            onChange={(e) => updateGlobalStat("other_red", e.target.value)}
-            className="w-full bg-black/40 border border-surface-card rounded-lg px-3 py-2 text-sm text-white focus:border-secondary outline-none transition-colors"
-            placeholder="0"
-          />
-          <p className="text-[9px] text-gray-500 italic">Sum of Decorations, Mastery Tech, War Leader Skill</p>
-        </div>
-      </div>
     </div>
   );
 
